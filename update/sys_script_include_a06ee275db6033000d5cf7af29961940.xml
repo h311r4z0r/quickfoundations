@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_335934_qfound.qFutils</api_name>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>qFutils</name>
+        <script><![CDATA[var qFutils = Class.create();
+qFutils.prototype = {
+    initialize: function() {
+    },
+	
+	createQFTables: function(json){
+		for(var t=0; t<json.length; t++){
+			var tableCount = this.getCount("sys_db_object","name=u_"+json[t].table.toLowerCase()+"_dm");
+			if(parseInt(tableCount) == 0){
+				insertDataMapTable = {"create_access":"false","name":"u_"+json[t].table.toLowerCase()+"_dm","label":json[t].table};
+				new this.insertRec("sys_db_object",insertDataMapTable);
+				var dmArray = [
+					{"field":"Active","type":"boolean","reference":"","length":"40","display":"false"},
+					{"field":"Attributes","type":"string","reference":"","length":"1000","display":"false"},
+					{"field":"Choice","type":"integer","reference":"","length":"40","display":"false"},
+					{"field":"Choice Table","type":"string","reference":"","length":"255","display":"false"},
+					{"field":"Company","type":"reference","reference":"core_company","length":"40","display":"false"},
+					{"field":"Default Value","type":"string","reference":"","length":"255","display":"false"},
+					{"field":"Dependent","type":"boolean","reference":"","length":"40","display":"false"},
+					{"field":"Element","type":"string","reference":"","length":"255","display":"true"},
+					{"field":"Label","type":"string","reference":"","length":"255","display":"false"},
+					{"field":"Mandatory","type":"boolean","reference":"","length":"40","display":"false"},
+					{"field":"Max Length","type":"integer","reference":"","length":"40","display":"false"},
+					{"field":"Mod Count","type":"integer","reference":"","length":"40","display":"false"},
+					{"field":"Read Only","type":"boolean","reference":"","length":"40","display":"false"},
+					{"field":"Reference","type":"string","reference":"","length":"120","display":"false"},
+					{"field":"Sys ID","type":"string","reference":"","length":"40","display":"false"},
+					{"field":"Type","type":"string","reference":"","length":"120","display":"false"},
+				];
+				for(var i=0; i<dmArray.length; i++){
+					insertArray = {
+						"name":"u_"+json[t].table+"_dm",
+						"column_label":dmArray[i].field,
+						"internal_type":dmArray[i].type,
+						"reference":dmArray[i].reference,
+						"max_length":dmArray[i].length,
+						"display":dmArray[i].display
+					};
+					this.insertRec("sys_dictionary",insertArray);
+				}
+				this.insertModule(json[t].table);
+
+				insertChoicesTable = {"create_access":"false","name":"u_"+json[t].table.toLowerCase()+"_dm_choices","label":json[t].table+" Choices"};
+				this.insertRec("sys_db_object",insertChoicesTable);
+				choicesArray = [
+					{"field":"Dependent Value","type":"string","reference":"","length":"255"},
+					{"field":"Element","type":"reference","reference":"u_"+json[t].table.toLowerCase()+"_dm","length":"40"},
+					{"field":"Hint","type":"string","reference":"","length":"255","display":"false"},
+					{"field":"Inactive","type":"boolean","reference":"","length":"40","display":"false"},
+					{"field":"Label","type":"string","reference":"","length":"255","display":"true"},
+					{"field":"Mod Count","type":"integer","reference":"","length":"40","display":"false"},
+					{"field":"Sequence","type":"integer","reference":"","length":"40","display":"false"},
+					{"field":"Value","type":"string","reference":"","length":"255","display":"false"},
+				];
+				for(var j=0; j<choicesArray.length; j++){
+					insertArray = {
+						"name":"u_"+json[t].table.toLowerCase()+"_dm_choices",
+						"column_label":choicesArray[j].field,
+						"internal_type":choicesArray[j].type,
+						"reference":choicesArray[j].reference,
+						"max_length":choicesArray[j].length,
+						"display":choicesArray[j].display
+					};
+					this.insertRec("sys_dictionary",insertArray);
+				}
+				this.setRelated(json[t].table.toLowerCase());
+			}
+		}	
+	},
+
+	insertModule: function(table){
+		qfApplicationID = this.getValue("sys_app_application","name=Quick Foundation","sys_id");
+		insertArray = 	{"title":table,"application":qfApplicationID,"link_type":"LIST","name":"u_"+table.toLowerCase()+"_dm","order":"100"};
+		this.insertRec("sys_app_module",insertArray);
+
+	},
+
+	setRelated: function(table){
+		//viewSysID = this.getRecord("sys_ui_view","name=quick_foundation","sys_id");
+		listArray =	{"name":"u_"+table+"_dm","view":"Quick Foundation"};
+		list = this.insertRec("sys_ui_related_list",listArray);
+		entryArray = {"related_list":"u_"+table+"_dm_choices.u_element","list_id":list};
+		this.insertRec("sys_ui_related_list_entry",entryArray);
+	},
+
+	getValue: function(table,query,field){
+		var result;
+		var gr = new GlideRecord(table);
+		gr.addEncodedQuery(query);
+		gr.query();
+		while(gr.next()){
+			result = gr.getElement(field);
+		}
+		return result;
+	},
+
+	getRecords: function(table,query,field){
+		var result = [];
+		var gr = new GlideRecord(table);
+		gr.addEncodedQuery(query);
+		gr.query();
+		while(gr.next()){
+			result.push(gr.getElement(field).toString());
+		}
+		return result;
+	},
+
+	insertRec: function(table,json){
+		var gr = new GlideRecord(table);
+		gr.initiaize();
+		for(var key in json){
+			gr.setValue(key.toString(),json[key].toString());
+		}
+		var insert = gr.insert();
+		return insert;
+	},
+
+	updateRec: function(table,sysid,json){
+		var gr = new GlideRecord(table);
+		gr.get(sysid);
+		gr.query();
+		while(gr.next()){
+			for(var key in json){
+				gr.setValue(key.toString(),json[key].toString());
+			}
+			gr.update();	
+		}
+	},
+
+	getCount: function(table,query){
+		var ga = new GlideAggregate(table);
+		ga.addAggregate('COUNT');
+		ga.addEncodedQuery(query);
+		ga.query();
+		var count = 0;
+		if(ga.next()){
+			count = ga.getAggregate('COUNT');
+		}
+		return count;
+	},
+
+    type: 'qFutils'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-04-02 10:30:46</sys_created_on>
+        <sys_id>a06ee275db6033000d5cf7af29961940</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>qFutils</sys_name>
+        <sys_package display_value="Quick Foundation" source="x_335934_qfound">3edb2a79db2033000d5cf7af29961934</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="Quick Foundation">3edb2a79db2033000d5cf7af29961934</sys_scope>
+        <sys_update_name>sys_script_include_a06ee275db6033000d5cf7af29961940</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-04-02 10:30:46</sys_updated_on>
+    </sys_script_include>
+</record_update>
